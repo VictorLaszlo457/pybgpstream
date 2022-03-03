@@ -1,0 +1,82 @@
+# Investigate which prefixes occur across route-views exchanges. 
+
+import pybgpstream
+from collections import defaultdict
+import pandas as pd
+# Import libraries
+from matplotlib import pyplot as plt
+import numpy as np
+
+#Telx Internet Exchange Atlanta
+COLLECTOR1 = "route-views.telxatl"
+#Equinix
+COLLECTOR2 = "route-views.eqix"
+#Northwest Access Exchange
+COLLECTOR3 = "route-views.nwax"
+
+import pybgpstream
+stream1 = pybgpstream.BGPStream(
+    from_time="2021-07-07 00:00:00", until_time="2021-07-07 23:59:00",
+    collectors= ["route-views.eqix"],
+    record_type= "updates",
+)
+
+stream2 = pybgpstream.BGPStream(
+    from_time="2021-07-07 00:00:00", until_time="2021-07-07 23:59:00",
+    collectors= ["route-views.telxatl"],
+    record_type= "updates",
+)
+
+stream3 = pybgpstream.BGPStream(
+    from_time="2021-07-07 00:00:00", until_time="2021-07-07 23:59:00",
+    collectors= ["route-views.nwax"],
+    record_type= "updates",
+)
+
+
+# <prefix, count> dictionaries
+prefix_count1 = defaultdict(set)
+prefix_count2 = defaultdict(set)
+prefix_count3 = defaultdict(set)
+
+# Get next record
+total_count = 0
+for rec in stream1.records():
+    for elem in rec:
+        # Get the prefix
+        pfx = elem.fields['prefix']
+        if (pfx in prefix_count1):
+            prefix_count1[pfx] += 1
+        else:
+            prefix_count1[pfx] = 1 
+
+
+for rec in stream2.records():
+    for elem in rec:
+        # Get the prefix
+        pfx = elem.fields['prefix']
+        if (pfx in prefix_count2):
+            prefix_count2[pfx] += 1
+        else:
+            prefix_count2[pfx] = 1 
+
+for rec in stream3.records():
+    for elem in rec:
+        # Get the prefix
+        pfx = elem.fields['prefix']
+        if (pfx in prefix_count3):
+            prefix_count3[pfx] += 1
+        else:
+            prefix_count3[pfx] = 1 
+
+dic1=dict(sorted(prefix_count1.items(),key= lambda x:x[1], reverse=True))
+print(dic1)
+dic2=dict(sorted(prefix_count2.items(),key= lambda x:x[1], reverse=True))
+print(dic2)
+dic3=dict(sorted(prefix_count3.items(),key= lambda x:x[1], reverse=True))
+print(dic3)
+
+common_prefixes = list(set(list(dic1.keys()))&set(list(dic2.keys()))&set(list(dic3.keys())))
+
+print("Common Prefixes:" + str(common_prefixes))
+print("# of common prefixes: " + str(len(common_prefixes)))
