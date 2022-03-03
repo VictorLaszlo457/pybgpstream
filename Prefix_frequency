@@ -1,0 +1,62 @@
+# Investigate the most frequently appearing prefixes for equinix collector for Jan. 1st 2021 
+
+import pybgpstream
+from collections import defaultdict
+import pandas as pd
+# Import libraries
+from matplotlib import pyplot as plt
+import numpy as np
+
+#Telx Internet Exchange Atlanta
+COLLECTOR1 = "route-views.telxatl"
+#Equinix
+COLLECTOR2 = "route-views.eqix"
+#Northwest Access Exchange
+COLLECTOR3 = "route-views.nwax"
+
+import pybgpstream
+stream = pybgpstream.BGPStream(
+    from_time="2021-01-01 00:00:00", until_time="2021-01-01 23:59:00",
+    collectors= ["route-views.eqix"],
+    record_type= "updates",
+)
+
+# <prefix, count> dictionary
+prefix_count = defaultdict(set)
+
+# Get next record
+total_count = 0
+for rec in stream.records():
+    for elem in rec:
+        # Get the prefix
+        pfx = elem.fields['prefix']
+        if (pfx in prefix_count):
+            prefix_count[pfx] += 1
+        else:
+            prefix_count[pfx] = 1 
+    total_count += 1
+
+# Print the list of MOAS prefix and their origin ASns
+# for pfx in prefix_count:
+#     print("Prefix:" + pfx + " ==> " + str(prefix_count[pfx]))
+
+dic2=dict(sorted(prefix_count.items(),key= lambda x:x[1], reverse=True))
+#print(dic2)
+
+prefix_df = pd.DataFrame(dic2.items(), columns=['prefix','count of most commonly occuring prefixes'])
+prefix_df['percentage'] = (prefix_df['count of most commonly occuring prefixes'].div(total_count)) * 100
+
+first_20 = prefix_df.head(20).copy()
+other = prefix_df.drop(prefix_df.head(20).index)
+other_sum = other['percentage'].sum()
+percentage_other_sum = (other_sum / prefix_df.shape[0]) * 100 
+
+first_20.set_index('prefix', inplace=True)
+first_20.loc['other'] = [other.shape[0], percentage_other_sum]
+total = first_20['count of most commonly occuring prefixes'].sum()
+first_20['percentage'] = (first_20['count of most commonly occuring prefixes'].div(total)) * 100
+print(first_20)
+
+#print("Sum:" + str(other_sum))
+#print("other.shape[0]: " + str(other.shape[0]))
+plot = first_20.plot.pie(y='percentage', figsize=(60, 10))
